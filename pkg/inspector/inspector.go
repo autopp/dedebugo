@@ -52,6 +52,16 @@ func (i *Inspector) Inspect(filename string, src interface{}) (*token.FileSet, [
 	return l.Fset, v.mached, nil
 }
 
+func DefaultDeniedList() DeniedList {
+	return DeniedList{
+		"fmt": {
+			"Print",
+			"Printf",
+			"Println",
+		},
+	}
+}
+
 func convertDeniedList(deniedList DeniedList, prog *loader.Program) map[*types.Package]map[string]struct{} {
 	converted := map[*types.Package]map[string]struct{}{}
 	for pkg, methods := range deniedList {

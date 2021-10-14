@@ -17,6 +17,8 @@ package cmd
 import (
 	"io"
 
+	"github.com/autopp/dedebugo/pkg/inspector"
+	"github.com/autopp/dedebugo/pkg/reporter"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +37,13 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 				return nil
 			}
 
+			i := &inspector.Inspector{DeniedList: inspector.DefaultDeniedList()}
+			fset, nodes, err := i.Inspect(args[0], nil)
+			if err != nil {
+				return err
+			}
+
+			reporter.New().Report(cmd.OutOrStderr(), fset, nodes)
 			return nil
 		},
 	}
