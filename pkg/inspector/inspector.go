@@ -16,7 +16,6 @@ package inspector
 
 import (
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"go/types"
 
@@ -33,7 +32,7 @@ type Inspector struct {
 // if src != nil, it should be []byte, string, or io.Reader and filename is used for position infomation only.
 // if src == nil, Inspect read from filesystem.
 func (i *Inspector) Inspect(filename string, src interface{}) (*token.FileSet, []*ast.CallExpr, error) {
-	l := &loader.Config{ParserMode: parser.ParseComments}
+	l := &loader.Config{ParserMode: 0}
 	astf, err := l.ParseFile(filename, src)
 	if err != nil {
 		return nil, nil, err
