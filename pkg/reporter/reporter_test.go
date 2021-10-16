@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -35,7 +34,6 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 
 	if c, ok := node.(*ast.CallExpr); ok {
 		v.nodes = append(v.nodes, c)
-		fmt.Printf("%#v\n", v.nodes)
 	}
 
 	return v
