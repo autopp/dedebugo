@@ -84,11 +84,18 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 	if node == nil {
 		return v
 	}
-	if c, ok := node.(*ast.CallExpr); ok {
-		if s, ok := c.Fun.(*ast.SelectorExpr); ok && v.isDeniedSel(s) {
-			v.mached = append(v.mached, c)
+
+	switch n := node.(type) {
+	case *ast.CallExpr:
+		if s, ok := n.Fun.(*ast.SelectorExpr); ok && v.isDeniedSel(s) {
+			v.mached = append(v.mached, n)
+		}
+	case *ast.GenDecl:
+		if n.Tok != token.VAR {
+			return nil
 		}
 	}
+
 	return v
 }
 
