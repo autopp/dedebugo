@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/printer"
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -18,6 +19,8 @@ var _ = Describe("Inspector", func() {
 		}
 		filename := "testdata/sample.go"
 		contents, _ := os.ReadFile(filename)
+		wd, _ := os.Getwd()
+		fullpath := filepath.Join(wd, filename)
 
 		DescribeTable("success cases",
 			func(src interface{}) {
@@ -37,9 +40,9 @@ var _ = Describe("Inspector", func() {
 						return posAndExprs
 					},
 					Equal([][]string{
-						{"testdata/sample.go:23:2", `fmt.Print("hello ")`},
-						{"testdata/sample.go:24:2", `fmt.Println("world")`},
-						{"testdata/sample.go:25:2", `fmt.Printf("from %s\n", os.Args[0])`},
+						{fullpath + ":23:2", `fmt.Print("hello ")`},
+						{fullpath + ":24:2", `fmt.Println("world")`},
+						{fullpath + ":25:2", `fmt.Printf("from %s\n", os.Args[0])`},
 					}),
 				))
 			},

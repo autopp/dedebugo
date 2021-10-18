@@ -19,7 +19,7 @@ import (
 	"go/token"
 	"go/types"
 
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 )
 
 type DeniedList map[string][]string
@@ -32,23 +32,21 @@ type Inspector struct {
 // if src != nil, it should be []byte, string, or io.Reader and filename is used for position infomation only.
 // if src == nil, Inspect read from filesystem.
 func (i *Inspector) Inspect(filename string, src interface{}) (*token.FileSet, []*ast.CallExpr, error) {
-	l := &loader.Config{ParserMode: 0}
-	astf, err := l.ParseFile(filename, src)
+	cfg := &packages.Config{
+		Mode: packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+	}
+	pkgs, err := packages.Load(cfg, filename)
 	if err != nil {
 		return nil, nil, err
 	}
-	l.CreateFromFiles("", astf)
-	prog, err := l.Load()
-	if err != nil {
-		return nil, nil, err
-	}
+	pkg := pkgs[0]
 
-	converted := convertDeniedList(i.DeniedList, prog)
-	pkg := prog.Package(astf.Name.Name)
-	v := &visitor{pkg, converted, []*ast.CallExpr{}}
-	ast.Walk(v, astf)
+	converted := convertDeniedList(i.DeniedList, pkg)
+	v := &visitor{pkg.TypesInfo, converted, []*ast.CallExpr{}}
+	astF := pkg.Syntax[0]
+	ast.Walk(v, astF)
 
-	return l.Fset, v.mached, nil
+	return pkg.Fset, v.mached, nil
 }
 
 func DefaultDeniedList() DeniedList {
@@ -61,21 +59,24 @@ func DefaultDeniedList() DeniedList {
 	}
 }
 
-func convertDeniedList(deniedList DeniedList, prog *loader.Program) map[*types.Package]map[string]struct{} {
+func convertDeniedList(deniedList DeniedList, pkg *packages.Package) map[*types.Package]map[string]struct{} {
 	converted := map[*types.Package]map[string]struct{}{}
-	for pkg, methods := range deniedList {
-		methodSet := map[string]struct{}{}
-		for _, method := range methods {
-			methodSet[method] = struct{}{}
+
+	for _, p := range pkg.Types.Imports() {
+		if methods, ok := deniedList[p.Path()]; ok {
+			methodSet := map[string]struct{}{}
+			for _, method := range methods {
+				methodSet[method] = struct{}{}
+			}
+			converted[p] = methodSet
 		}
-		converted[prog.Package(pkg).Pkg] = methodSet
 	}
 
 	return converted
 }
 
 type visitor struct {
-	pkg        *loader.PackageInfo
+	typeInfo   *types.Info
 	deniedList map[*types.Package]map[string]struct{}
 	mached     []*ast.CallExpr
 }
@@ -100,7 +101,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 func (v *visitor) isDeniedSel(s *ast.SelectorExpr) bool {
-	p := v.pkg.Info.ObjectOf(s.Sel).Pkg()
+	p := v.typeInfo.ObjectOf(s.Sel).Pkg()
 	methods, ok := v.deniedList[p]
 	if !ok {
 		return false
