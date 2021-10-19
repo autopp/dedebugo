@@ -29,9 +29,7 @@ type Inspector struct {
 }
 
 // Inspect returns the ast.FileSet and all matched CallExpr nodes in given source.
-// if src != nil, it should be []byte, string, or io.Reader and filename is used for position infomation only.
-// if src == nil, Inspect read from filesystem.
-func (i *Inspector) Inspect(filename string, src interface{}) (*token.FileSet, []*ast.CallExpr, error) {
+func (i *Inspector) Inspect(filename string) (*token.FileSet, []*ast.CallExpr, error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
 	}

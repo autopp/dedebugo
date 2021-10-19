@@ -38,7 +38,7 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 			}
 
 			i := &inspector.Inspector{DeniedList: inspector.DefaultDeniedList()}
-			fset, nodes, err := i.Inspect(args[0], nil)
+			fset, nodes, err := i.Inspect(args[0])
 			if err != nil {
 				return err
 			}
