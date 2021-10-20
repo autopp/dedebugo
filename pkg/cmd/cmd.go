@@ -28,7 +28,7 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 		Use:           "dedebugo file",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.ExactArgs(1),
+		Args:          cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if v, err := cmd.Flags().GetBool(versionFlag); err != nil {
 				return err
@@ -38,12 +38,16 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 			}
 
 			i := &inspector.Inspector{DeniedList: inspector.DefaultDeniedList()}
-			fset, nodes, err := i.Inspect(args[0])
-			if err != nil {
-				return err
+			r := reporter.New()
+
+			for _, filename := range args {
+				fset, nodes, err := i.Inspect(filename)
+				if err != nil {
+					return err
+				}
+				r.Report(cmd.OutOrStderr(), fset, nodes)
 			}
 
-			reporter.New().Report(cmd.OutOrStderr(), fset, nodes)
 			return nil
 		},
 	}
