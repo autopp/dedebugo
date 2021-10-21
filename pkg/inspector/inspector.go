@@ -15,9 +15,12 @@
 package inspector
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"path/filepath"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -30,14 +33,25 @@ type Inspector struct {
 
 // Inspect returns the ast.FileSet and all matched CallExpr nodes in given source.
 func (i *Inspector) Inspect(filename string) (*token.FileSet, []*ast.CallExpr, error) {
+	isTest := strings.HasSuffix(filename, "_test.go")
 	cfg := &packages.Config{
-		Mode: packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		Mode:  packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		Tests: isTest,
 	}
 	pkgs, err := packages.Load(cfg, filename)
 	if err != nil {
 		return nil, nil, err
 	}
-	pkg := pkgs[0]
+
+	absFilename, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pkg, err := findPackageOfFile(pkgs, absFilename)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	converted := convertDeniedList(i.DeniedList, pkg)
 	v := &visitor{pkg.TypesInfo, converted, []*ast.CallExpr{}}
@@ -73,6 +87,18 @@ func convertDeniedList(deniedList DeniedList, pkg *packages.Package) map[*types.
 	return converted
 }
 
+func findPackageOfFile(pkgs []*packages.Package, filename string) (*packages.Package, error) {
+	for _, pkg := range pkgs {
+		for _, f := range pkg.CompiledGoFiles {
+			if f == filename {
+				return pkg, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("package which contains %s is not found", filename)
+}
+
 type visitor struct {
 	typeInfo   *types.Info
 	deniedList map[*types.Package]map[string]struct{}
@@ -99,7 +125,11 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 func (v *visitor) isDeniedSel(s *ast.SelectorExpr) bool {
-	p := v.typeInfo.ObjectOf(s.Sel).Pkg()
+	o := v.typeInfo.ObjectOf(s.Sel)
+	if o == nil {
+		return false
+	}
+	p := o.Pkg()
 	methods, ok := v.deniedList[p]
 	if !ok {
 		return false
