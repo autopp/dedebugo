@@ -16,6 +16,10 @@ package cmd
 
 import (
 	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/autopp/dedebugo/pkg/inspector"
 	"github.com/autopp/dedebugo/pkg/reporter"
@@ -40,7 +44,15 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 			i := &inspector.Inspector{DeniedList: inspector.DefaultDeniedList()}
 			r := reporter.New()
 
-			for _, filename := range args {
+			gofiles := []string{}
+			for _, a := range args {
+				f, err := findGoFiles(a)
+				if err != nil {
+					return err
+				}
+				gofiles = append(gofiles, f...)
+			}
+			for _, filename := range gofiles {
 				fset, nodes, err := i.Inspect(filename)
 				if err != nil {
 					return err
@@ -60,4 +72,42 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 	cmd.SetArgs(args)
 
 	return cmd.Execute()
+}
+
+func findGoFiles(path string) ([]string, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if stat.Mode().IsRegular() {
+		if strings.HasSuffix(path, ".go") {
+			return []string{path}, nil
+		}
+		return nil, nil
+	}
+
+	if !stat.Mode().IsDir() {
+		return nil, nil
+	}
+
+	gofiles := []string{}
+
+	err = filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.Type().IsRegular() && strings.HasSuffix(path, ".go") {
+			gofiles = append(gofiles, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return gofiles, nil
 }
