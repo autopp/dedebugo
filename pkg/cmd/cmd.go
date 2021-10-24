@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -25,6 +26,8 @@ import (
 	"github.com/autopp/dedebugo/pkg/reporter"
 	"github.com/spf13/cobra"
 )
+
+var ErrDeniedCallFound = errors.New("denied callls are found")
 
 func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []string) error {
 	const versionFlag = "version"
@@ -52,14 +55,23 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 				}
 				gofiles = append(gofiles, f...)
 			}
+
+			found := false
 			for _, filename := range gofiles {
 				fset, nodes, err := i.Inspect(filename)
 				if err != nil {
 					return err
 				}
+
+				if len(nodes) != 0 {
+					found = true
+				}
 				r.Report(cmd.OutOrStderr(), fset, nodes)
 			}
 
+			if found {
+				return ErrDeniedCallFound
+			}
 			return nil
 		},
 	}
