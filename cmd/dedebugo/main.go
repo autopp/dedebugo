@@ -24,8 +24,10 @@ var version = "HEAD"
 
 func main() {
 	err := cmd.Run(version, os.Stdin, os.Stdout, os.Stderr, os.Args[1:])
-	if err != nil {
+	if err == cmd.ErrDeniedCallFound {
 		os.Exit(1)
+	} else if err != nil {
+		os.Exit(2)
 	} else {
 		os.Exit(0)
 	}
