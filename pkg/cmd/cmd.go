@@ -17,11 +17,8 @@ package cmd
 import (
 	"errors"
 	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"strings"
 
+	"github.com/autopp/dedebugo/pkg/finder"
 	"github.com/autopp/dedebugo/pkg/inspector"
 	"github.com/autopp/dedebugo/pkg/reporter"
 	"github.com/spf13/cobra"
@@ -48,8 +45,9 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 			r := reporter.New()
 
 			gofiles := []string{}
+			f := finder.New()
 			for _, a := range args {
-				f, err := findGoFiles(a)
+				f, err := f.FindGoFiles(a)
 				if err != nil {
 					return err
 				}
@@ -84,42 +82,4 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 	cmd.SetArgs(args)
 
 	return cmd.Execute()
-}
-
-func findGoFiles(path string) ([]string, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if stat.Mode().IsRegular() {
-		if strings.HasSuffix(path, ".go") {
-			return []string{path}, nil
-		}
-		return nil, nil
-	}
-
-	if !stat.Mode().IsDir() {
-		return nil, nil
-	}
-
-	gofiles := []string{}
-
-	err = filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.Type().IsRegular() && strings.HasSuffix(path, ".go") {
-			gofiles = append(gofiles, path)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return gofiles, nil
 }
