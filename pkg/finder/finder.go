@@ -27,6 +27,8 @@ type Finder interface {
 
 type finder struct{}
 
+var defaultExcludedList = []string{".git", "vendor"}
+
 func New() Finder {
 	return &finder{}
 }
@@ -38,7 +40,7 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 	}
 
 	if stat.Mode().IsRegular() {
-		if strings.HasSuffix(path, ".go") {
+		if isExcluded(path) {
 			return []string{path}, nil
 		}
 		return nil, nil
@@ -55,7 +57,7 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 			return err
 		}
 
-		if d.Type().IsRegular() && strings.HasSuffix(path, ".go") {
+		if d.Type().IsRegular() && !isExcluded(path) {
 			gofiles = append(gofiles, path)
 		}
 
@@ -67,4 +69,18 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 	}
 
 	return gofiles, nil
+}
+
+func isExcluded(path string) bool {
+	if !strings.HasSuffix(path, ".go") {
+		return false
+	}
+
+	for _, p := range defaultExcludedList {
+		if m, ok := filepath.Match(p, path); ok != nil || m {
+			return false
+		}
+	}
+
+	return true
 }
