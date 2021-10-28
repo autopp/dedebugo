@@ -40,7 +40,7 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 	}
 
 	if stat.Mode().IsRegular() {
-		if isExcluded(path) {
+		if isTargetFile(path) {
 			return []string{path}, nil
 		}
 		return nil, nil
@@ -57,7 +57,11 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 			return err
 		}
 
-		if d.Type().IsRegular() && !isExcluded(path) {
+		if d.Type().IsDir() {
+			if isExcluded(path) {
+				return filepath.SkipDir
+			}
+		} else if d.Type().IsRegular() && isTargetFile(path) {
 			gofiles = append(gofiles, path)
 		}
 
@@ -72,15 +76,15 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 }
 
 func isExcluded(path string) bool {
-	if !strings.HasSuffix(path, ".go") {
-		return false
-	}
-
 	for _, p := range defaultExcludedList {
 		if m, ok := filepath.Match(p, path); ok != nil || m {
-			return false
+			return true
 		}
 	}
 
-	return true
+	return false
+}
+
+func isTargetFile(path string) bool {
+	return !isExcluded(path) && strings.HasSuffix(path, ".go")
 }
