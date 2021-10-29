@@ -25,22 +25,38 @@ type Finder interface {
 	FindGoFiles(path string) ([]string, error)
 }
 
-type finder struct{}
-
-var defaultExcludedList = []string{".git", "vendor"}
-
-func New() Finder {
-	return &finder{}
+type finder struct {
+	excludedList []string
 }
 
-func (*finder) FindGoFiles(path string) ([]string, error) {
+type Option func(f *finder) error
+
+func New(opts ...Option) (Finder, error) {
+	f := &finder{}
+
+	for _, o := range opts {
+		if err := o(f); err != nil {
+			return nil, err
+		}
+	}
+	return &finder{}, nil
+}
+
+func WithExcludedList(exlcludedList []string) Option {
+	return func(f *finder) error {
+		f.excludedList = exlcludedList
+		return nil
+	}
+}
+
+func (f *finder) FindGoFiles(path string) ([]string, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 
 	if stat.Mode().IsRegular() {
-		if isTargetFile(path) {
+		if f.isTargetFile(path) {
 			return []string{path}, nil
 		}
 		return nil, nil
@@ -58,10 +74,10 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 		}
 
 		if d.Type().IsDir() {
-			if isExcluded(path) {
+			if f.isExcluded(path) {
 				return filepath.SkipDir
 			}
-		} else if d.Type().IsRegular() && isTargetFile(path) {
+		} else if d.Type().IsRegular() && f.isTargetFile(path) {
 			gofiles = append(gofiles, path)
 		}
 
@@ -75,8 +91,8 @@ func (*finder) FindGoFiles(path string) ([]string, error) {
 	return gofiles, nil
 }
 
-func isExcluded(path string) bool {
-	for _, p := range defaultExcludedList {
+func (f *finder) isExcluded(path string) bool {
+	for _, p := range f.excludedList {
 		if m, ok := filepath.Match(p, path); ok != nil || m {
 			return true
 		}
@@ -85,6 +101,6 @@ func isExcluded(path string) bool {
 	return false
 }
 
-func isTargetFile(path string) bool {
-	return !isExcluded(path) && strings.HasSuffix(path, ".go")
+func (f *finder) isTargetFile(path string) bool {
+	return !f.isExcluded(path) && strings.HasSuffix(path, ".go")
 }

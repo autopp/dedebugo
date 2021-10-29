@@ -25,6 +25,7 @@ import (
 )
 
 var ErrDeniedCallFound = errors.New("denied callls are found")
+var defaultExcludedList = []string{".git", "vendor"}
 
 func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []string) error {
 	const versionFlag = "version"
@@ -45,7 +46,10 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 			r := reporter.New()
 
 			gofiles := []string{}
-			f := finder.New()
+			f, err := finder.New(finder.WithExcludedList(defaultExcludedList))
+			if err != nil {
+				return err
+			}
 			for _, a := range args {
 				f, err := f.FindGoFiles(a)
 				if err != nil {
