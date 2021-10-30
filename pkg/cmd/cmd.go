@@ -29,6 +29,7 @@ var defaultExcludedList = []string{".git", "vendor"}
 
 func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []string) error {
 	const versionFlag = "version"
+	const excludeFlag = "exclude"
 	cmd := &cobra.Command{
 		Use:           "dedebugo file",
 		SilenceUsage:  true,
@@ -42,11 +43,16 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 				return nil
 			}
 
+			excludedList, err := cmd.Flags().GetStringSlice(excludeFlag)
+			if err != nil {
+				return err
+			}
+
 			i := &inspector.Inspector{DeniedList: inspector.DefaultDeniedList()}
 			r := reporter.New()
 
 			gofiles := []string{}
-			f, err := finder.New(finder.WithExcludedList(defaultExcludedList))
+			f, err := finder.New(finder.WithExcludedList(append(defaultExcludedList, excludedList...)))
 			if err != nil {
 				return err
 			}
@@ -79,6 +85,7 @@ func Run(version string, stdin io.Reader, stdout, stderr io.Writer, args []strin
 	}
 
 	cmd.Flags().Bool(versionFlag, false, "print version")
+	cmd.Flags().StringSlice(excludeFlag, []string{}, "exclude file pattern")
 
 	cmd.SetIn(stdin)
 	cmd.SetOut(stdout)
