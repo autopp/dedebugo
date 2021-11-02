@@ -39,7 +39,7 @@ func New(opts ...Option) (Finder, error) {
 			return nil, err
 		}
 	}
-	return &finder{}, nil
+	return f, nil
 }
 
 func WithExcludedList(exlcludedList []string) Option {
