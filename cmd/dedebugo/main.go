@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/autopp/dedebugo/pkg/cmd"
@@ -27,6 +28,7 @@ func main() {
 	if err == cmd.ErrDeniedCallFound {
 		os.Exit(1)
 	} else if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(2)
 	} else {
 		os.Exit(0)
